@@ -1,0 +1,43 @@
+# ============================================================================
+# Hetzner deployment: the pipeline worker + its Redis queue.
+# The web app runs on Vercel; the database + auth run on Supabase. This box
+# only needs Redis and the worker container.
+#
+#   cp .env.example .env   # fill in SUPABASE_*, REDIS_URL=redis://redis:6379,
+#                          # ANTHROPIC_API_KEY, and any provider keys
+#   docker compose up -d --build
+# ============================================================================
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redis-data:/data
+    ports:
+      # Expose to the Vercel API over a private network / SSH tunnel / Tailscale.
+      # Do NOT expose 6379 to the public internet without auth + TLS.
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+    depends_on:
+      redis:
+        condition: service_healthy
+    # Playwright/Chromium needs a bit of shared memory for stable rendering.
+    shm_size: "1gb"
+
+volumes:
+  redis-data:
