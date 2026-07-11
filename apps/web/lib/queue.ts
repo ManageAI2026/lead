@@ -1,5 +1,5 @@
 import 'server-only';
-import { Queue } from 'bullmq';
+import { Queue, type ConnectionOptions } from 'bullmq';
 import IORedis from 'ioredis';
 import { QUEUE_NAME, JOB_OPTS, type PipelineJob } from '@lead/core';
 
@@ -13,7 +13,7 @@ function getQueue(): Queue {
   if (!queue) {
     const connection = new IORedis(process.env.REDIS_URL!, {
       maxRetriesPerRequest: null,
-    });
+    }) as unknown as ConnectionOptions;
     queue = new Queue(QUEUE_NAME, { connection });
   }
   return queue;
