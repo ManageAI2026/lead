@@ -1,0 +1,18 @@
+# Build the worker image with the repo root as context:
+#   docker build -f apps/worker/Dockerfile -t lead-worker .
+# Docker reads the .dockerignore at the CONTEXT root (the repo root). Mirror
+# these entries there for the leanest build context. This file keeps the local
+# apps/worker tree clean when it is part of the context.
+node_modules
+dist
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+npm-debug.log*
+playwright-report
+test-results
+.DS_Store
+Dockerfile
+.dockerignore
+README.md
