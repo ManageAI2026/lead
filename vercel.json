@@ -3,10 +3,5 @@
   "buildCommand": "npm run build --workspace packages/core && npm run build --workspace apps/web",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "outputDirectory": "apps/web/.next",
-  "git": {
-    "deploymentEnabled": {
-      "claude/scraper-dashboard-build-n1fcg6": true
-    }
-  }
+  "outputDirectory": "apps/web/.next"
 }
