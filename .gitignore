@@ -40,3 +40,8 @@ apps/worker/test-results/
 coverage/
 .turbo/
 .vercel
+*.bundle
+
+*.bundle
+
+*.bundle
