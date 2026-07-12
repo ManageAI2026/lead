@@ -3,17 +3,18 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
-/**
- * Refreshes the Supabase session cookie on every request and guards the
- * /app/* dashboard routes behind auth.
- */
 export async function middleware(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -26,31 +27,33 @@ export async function middleware(request: NextRequest) {
           );
         },
       },
+    });
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const path = request.nextUrl.pathname;
+    const isApp = path.startsWith('/app');
+    const isAuthPage = path === '/login' || path === '/signup';
+
+    if (isApp && !user) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('next', path);
+      return NextResponse.redirect(url);
     }
-  );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    if (isAuthPage && user) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/app';
+      return NextResponse.redirect(url);
+    }
 
-  const path = request.nextUrl.pathname;
-  const isApp = path.startsWith('/app');
-  const isAuthPage = path === '/login' || path === '/signup';
-
-  if (isApp && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', path);
-    return NextResponse.redirect(url);
+    return response;
+  } catch {
+    return NextResponse.next({ request });
   }
-
-  if (isAuthPage && user) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/app';
-    return NextResponse.redirect(url);
-  }
-
-  return response;
 }
 
 export const config = {
