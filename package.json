@@ -1,0 +1,24 @@
+{
+  "name": "lead-booster-pro",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lead Booster Pro — free-first B2B lead generation platform (ManageAI)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace packages/core && npm run build --workspace apps/web",
+    "build:worker": "npm run build --workspace packages/core && npm run build --workspace apps/worker",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:worker": "npm run dev --workspace apps/worker",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:reset": "supabase db reset",
+    "db:push": "supabase db push"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "UNLICENSED"
+}

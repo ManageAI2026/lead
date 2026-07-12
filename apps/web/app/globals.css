@@ -1,0 +1,101 @@
+/* Lead Booster Pro design system — tokens from the approved prototypes. */
+
+:root {
+  --bg: #ffffff;
+  --surf: #f5f6f8;
+  --surfh: #edf0f4;
+  --border: #e2e6ec;
+  --border-l: #eef0f4;
+  --borderl: #eef0f4;
+  --text: #1e293b;
+  --text2: #475569;
+  --text3: #7a8b9a;
+  --navy: #1e3348;
+  --accent: #4a8fd6;
+  --accentm: #6baae0;
+  --accentd: #2d6aaf;
+  --accentl: #ebf3fc;
+  --green: #16a34a;
+  --greenl: #e8f8ee;
+  --green-light: #e8f8ee;
+  --amber: #d97706;
+  --amberl: #fef8e8;
+  --red: #dc2626;
+  --redl: #fef2f2;
+  --purple: #7c5cfc;
+  --purplel: #f0edff;
+  --f: 'Montserrat', system-ui, -apple-system, sans-serif;
+  --fm: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--accentl);
+}
+
+@keyframes lbpm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lbp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lbp-spin {
+  display: inline-block;
+  border-radius: 50%;
+  border-top-color: transparent !important;
+  animation: lbpm-spin 0.7s linear infinite;
+}
+
+/* Thin, unobtrusive scrollbars inside app panels. */
+.lbp-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.lbp-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+}
+.lbp-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
