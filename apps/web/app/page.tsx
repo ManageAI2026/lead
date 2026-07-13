@@ -77,12 +77,11 @@ export default function HomePage() {
                 src="/manage-ai-logo.png"
                 alt="Manage AI — Lead Booster Intelligence System"
                 width={460}
-                height={259}
+                height={199}
                 style={{
                   width: '100%',
                   maxWidth: 460,
                   height: 'auto',
-                  borderRadius: 20,
                   filter: 'drop-shadow(0 20px 50px rgba(74,143,214,.28))',
                   animation: 'lbpm-throb 3.4s ease-in-out infinite',
                 }}
