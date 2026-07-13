@@ -174,13 +174,46 @@ export function Sidebar({
         >
           {initials}
         </span>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ font: '600 12px var(--f)', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {userName}
           </div>
           <div style={{ font: '500 10px var(--f)', color: 'var(--text3)' }}>{orgName}</div>
         </div>
+        <button
+          onClick={signOut}
+          title="Log out"
+          aria-label="Log out"
+          style={{
+            flex: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 30,
+            height: 30,
+            border: '1px solid var(--border)',
+            borderRadius: 8,
+            background: 'transparent',
+            color: 'var(--text3)',
+            cursor: 'pointer',
+          }}
+        >
+          <Icon
+            path='<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>'
+            size={15}
+            strokeWidth={1.9}
+          />
+        </button>
       </div>
     </aside>
   );
+}
+
+async function signOut() {
+  try {
+    await fetch('/auth/signout', { method: 'POST' });
+  } finally {
+    // Full reload so all client state (realtime channels, cached rows) is dropped.
+    window.location.href = '/login';
+  }
 }
