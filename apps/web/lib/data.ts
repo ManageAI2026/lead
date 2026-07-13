@@ -22,6 +22,13 @@ import {
  * under the signed-in user's RLS session (createClient), so a caller can only
  * ever read rows for orgs they belong to. Rows come back snake_case from
  * Postgres and are mapped to the camelCase @lead/core domain types.
+ *
+ * The dashboard reads the SHARED server schema (the server repo owns it):
+ * memberships, people, contact_evidence, org_provider_configs, usage_ledger,
+ * jobs (+ run_events). The ICP rubric lives in run_profiles.config (jsonb) —
+ * there is no icp_profiles table. Mappers are defensive about columns the
+ * server schema may name differently; unknown columns fall back rather than
+ * crash the page.
  */
 
 // ---------------------------------------------------------------------------
@@ -44,7 +51,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   if (!user) return null;
 
   const { data: memberRow } = await supabase
-    .from('members')
+    .from('memberships')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: true })
@@ -73,11 +80,11 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 // Runs & targets
 // ---------------------------------------------------------------------------
 
-/** The org's most recent active (queued/running/paused) run, or null. */
+/** The org's most recent active (queued/running/paused) job, or null. */
 export async function getActiveRun(orgId: string): Promise<Run | null> {
   const supabase = createClient();
   const { data } = await supabase
-    .from('runs')
+    .from('jobs')
     .select('*')
     .eq('org_id', orgId)
     .in('status', ['queued', 'running', 'paused'])
@@ -90,7 +97,7 @@ export async function getActiveRun(orgId: string): Promise<Run | null> {
 export async function getRecentRuns(orgId: string, limit = 10): Promise<Run[]> {
   const supabase = createClient();
   const { data } = await supabase
-    .from('runs')
+    .from('jobs')
     .select('*')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
@@ -106,6 +113,32 @@ export async function getTargets(runId: string): Promise<Target[]> {
     .eq('run_id', runId)
     .order('created_at', { ascending: true });
   return (data ?? []).map(mapTarget);
+}
+
+/** Per-job event log (server schema: run_events accompanies jobs). */
+export interface RunEvent {
+  id: string;
+  jobId: string;
+  kind: string;
+  message: string;
+  createdAt: string;
+}
+
+export async function getRunEvents(jobId: string, limit = 200): Promise<RunEvent[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('run_events')
+    .select('*')
+    .eq('job_id', jobId)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    jobId: r.job_id ?? jobId,
+    kind: r.kind ?? r.type ?? 'event',
+    message: r.message ?? r.detail ?? '',
+    createdAt: r.created_at,
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +159,7 @@ export async function getContacts(
   filters: ContactFilters = {}
 ): Promise<Contact[]> {
   const supabase = createClient();
-  let query = supabase.from('contacts').select('*').eq('org_id', orgId);
+  let query = supabase.from('people').select('*').eq('org_id', orgId);
 
   if (filters.emailStatus && filters.emailStatus !== 'all') {
     query = query.eq('email_status', filters.emailStatus);
@@ -176,7 +209,7 @@ export async function getContactCountsByDomain(
 ): Promise<Record<string, number>> {
   const supabase = createClient();
   const { data } = await supabase
-    .from('contacts')
+    .from('people')
     .select('domain')
     .eq('org_id', orgId)
     .limit(2000);
@@ -192,10 +225,15 @@ export async function getContactCountsByDomain(
 // ICP, sources, ledger, members
 // ---------------------------------------------------------------------------
 
+/**
+ * ICP rubrics. Server schema: there is no icp_profiles table — each rubric is
+ * a run_profiles row whose `config` jsonb holds the targeting fields. The
+ * job's icpProfileId is advisory (no FK).
+ */
 export async function getIcpProfiles(orgId: string): Promise<IcpProfile[]> {
   const supabase = createClient();
   const { data } = await supabase
-    .from('icp_profiles')
+    .from('run_profiles')
     .select('*')
     .eq('org_id', orgId)
     .order('created_at', { ascending: true });
@@ -205,7 +243,7 @@ export async function getIcpProfiles(orgId: string): Promise<IcpProfile[]> {
 export async function getSourceKeys(orgId: string): Promise<SourceKey[]> {
   const supabase = createClient();
   const { data } = await supabase
-    .from('source_keys')
+    .from('org_provider_configs')
     .select('*')
     .eq('org_id', orgId);
   return (data ?? []).map(mapSourceKey);
@@ -214,7 +252,7 @@ export async function getSourceKeys(orgId: string): Promise<SourceKey[]> {
 export async function getLedger(orgId: string): Promise<LedgerEntry[]> {
   const supabase = createClient();
   const { data } = await supabase
-    .from('ledger_entries')
+    .from('usage_ledger')
     .select('*')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
@@ -248,7 +286,7 @@ export async function getLedgerByProvider(orgId: string): Promise<LedgerRollup[]
 export async function getMembers(orgId: string): Promise<Member[]> {
   const supabase = createClient();
   const { data } = await supabase
-    .from('members')
+    .from('memberships')
     .select('*')
     .eq('org_id', orgId)
     .order('created_at', { ascending: true });
@@ -303,7 +341,9 @@ export function mapMember(r: any): Member {
     orgId: r.org_id,
     userId: r.user_id,
     role: r.role,
-    email: r.email,
+    // memberships in the server schema may not denormalize profile fields;
+    // fall back so Settings renders instead of crashing.
+    email: r.email ?? '',
     name: r.name ?? null,
   };
 }
@@ -317,12 +357,12 @@ export function mapRun(r: any): Run {
     profile: r.profile as RunProfileId,
     status: r.status,
     input: r.input ?? { kind: 'prompt', text: '' },
-    icpProfileId: r.icp_profile_id ?? null,
-    spendFree: Number(r.spend_free),
-    spendPaid: Number(r.spend_paid),
-    targetsTotal: r.targets_total,
-    targetsDone: r.targets_done,
-    contactsFound: r.contacts_found,
+    icpProfileId: r.icp_profile_id ?? r.run_profile_id ?? null,
+    spendFree: Number(r.spend_free ?? 0),
+    spendPaid: Number(r.spend_paid ?? 0),
+    targetsTotal: r.targets_total ?? 0,
+    targetsDone: r.targets_done ?? 0,
+    contactsFound: r.contacts_found ?? r.people_found ?? 0,
     startedAt: r.started_at ?? null,
     finishedAt: r.finished_at ?? null,
     createdAt: r.created_at,
@@ -407,41 +447,47 @@ export function mapCompany(r: any): Company {
 }
 
 export function mapIcp(r: any): IcpProfile {
+  // Server schema: the rubric lives in run_profiles.config (jsonb). Accept
+  // camelCase or snake_case keys inside config, and fall back to flat columns
+  // for tolerance while the server schema settles.
+  const c = (r.config ?? r) as any;
   return {
     id: r.id,
     orgId: r.org_id,
-    name: r.name,
-    industries: Array.isArray(r.industries) ? r.industries : [],
-    empMin: r.emp_min ?? 0,
-    empMax: r.emp_max ?? 0,
-    revBand: r.rev_band ?? '',
-    geo: r.geo ?? '',
-    companyType: r.company_type ?? '',
-    techHas: r.tech_has ?? '',
-    techNot: r.tech_not ?? '',
-    signals: Array.isArray(r.signals) ? r.signals : [],
-    seniority: Array.isArray(r.seniority) ? r.seniority : [],
-    functions: Array.isArray(r.functions) ? r.functions : [],
-    titleKeywords: r.title_keywords ?? '',
-    disqualifiers: r.disqualifiers ?? '',
-    tierCut: r.tier_cut ?? '60 / 75 / 90',
+    name: r.name ?? c.name ?? 'Default profile',
+    industries: Array.isArray(c.industries) ? c.industries : [],
+    empMin: c.empMin ?? c.emp_min ?? 0,
+    empMax: c.empMax ?? c.emp_max ?? 0,
+    revBand: c.revBand ?? c.rev_band ?? '',
+    geo: c.geo ?? '',
+    companyType: c.companyType ?? c.company_type ?? '',
+    techHas: c.techHas ?? c.tech_has ?? '',
+    techNot: c.techNot ?? c.tech_not ?? '',
+    signals: Array.isArray(c.signals) ? c.signals : [],
+    seniority: Array.isArray(c.seniority) ? c.seniority : [],
+    functions: Array.isArray(c.functions) ? c.functions : [],
+    titleKeywords: c.titleKeywords ?? c.title_keywords ?? '',
+    disqualifiers: c.disqualifiers ?? '',
+    tierCut: c.tierCut ?? c.tier_cut ?? '60 / 75 / 90',
     createdAt: r.created_at,
-    updatedAt: r.updated_at,
+    updatedAt: r.updated_at ?? r.created_at,
   };
 }
 
 export function mapSourceKey(r: any): SourceKey {
+  // org_provider_configs may keep budget/last4 inside a config jsonb.
+  const c = (r.config ?? r) as any;
   return {
     id: r.id,
     orgId: r.org_id,
     provider: r.provider,
-    status: r.status,
-    last4: r.last4 ?? null,
-    budgetCap: r.budget_cap != null ? Number(r.budget_cap) : null,
-    budgetUsed: Number(r.budget_used ?? 0),
-    enabled: r.enabled,
+    status: r.status ?? (r.enabled === false ? 'off' : 'valid'),
+    last4: c.last4 ?? r.last4 ?? null,
+    budgetCap: c.budget_cap != null ? Number(c.budget_cap) : c.budgetCap != null ? Number(c.budgetCap) : null,
+    budgetUsed: Number(c.budget_used ?? c.budgetUsed ?? 0),
+    enabled: r.enabled ?? true,
     createdAt: r.created_at,
-    updatedAt: r.updated_at,
+    updatedAt: r.updated_at ?? r.created_at,
   };
 }
 
@@ -449,11 +495,11 @@ export function mapLedger(r: any): LedgerEntry {
   return {
     id: r.id,
     orgId: r.org_id,
-    runId: r.run_id ?? null,
+    runId: r.run_id ?? r.job_id ?? null,
     provider: r.provider,
-    kind: r.kind,
-    spend: Number(r.spend),
-    calls: r.calls,
+    kind: r.kind ?? 'free',
+    spend: Number(r.spend ?? r.amount ?? 0),
+    calls: r.calls ?? r.quantity ?? 0,
     createdAt: r.created_at,
   };
 }

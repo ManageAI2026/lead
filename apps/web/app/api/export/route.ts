@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   if (!user) return new Response('unauthorized', { status: 401 });
 
   const { data: member } = await supabase
-    .from('members')
+    .from('memberships')
     .select('org_id')
     .eq('user_id', user.id)
     .limit(1)
@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   const tier = url.searchParams.get('tier') ?? 'all';
   const industry = url.searchParams.get('industry') ?? 'all';
 
-  let query = supabase.from('contacts').select('*').eq('org_id', member.org_id);
+  let query = supabase.from('people').select('*').eq('org_id', member.org_id);
   if (email !== 'all') query = query.eq('email_status', email);
   if (tier !== 'all') query = query.eq('tier', tier);
   if (industry !== 'all') query = query.eq('vertical', industry);

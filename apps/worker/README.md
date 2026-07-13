@@ -1,5 +1,13 @@
 # @lead/worker — Lead Booster Pro pipeline worker
 
+> **DEPRECATED.** The dashboard is now a companion to the ManageAI server,
+> which owns the pipeline, the job queue, and the shared Supabase schema. This
+> worker still targets the OLD standalone schema (runs, contacts, evidence,
+> source_keys, ledger_entries) and is no longer dispatched to — the web app's
+> BullMQ producer was removed and its action routes return 501 pending the
+> gateway. Kept in-repo for reference only; slated for deletion in Phase 2
+> (gateway cutover). Do not deploy it against the shared project.
+
 The worker consumes lead-generation jobs from Redis (BullMQ) and drives each run
 through the seven-stage pipeline, writing live status and final contacts to
 Supabase. It runs on a Hetzner box; the Next.js app (`apps/web`) only enqueues

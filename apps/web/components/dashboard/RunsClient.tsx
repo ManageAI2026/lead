@@ -153,9 +153,9 @@ export function RunsClient({
           return next;
         });
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'runs', filter: `id=eq.${run.id}` }, (payload) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs', filter: `id=eq.${run.id}` }, (payload) => {
         const r = payload.new as Record<string, any>;
-        setRun((prev) => (prev ? { ...prev, status: r.status, spendFree: Number(r.spend_free), spendPaid: Number(r.spend_paid), targetsDone: r.targets_done, contactsFound: r.contacts_found } : prev));
+        setRun((prev) => (prev ? { ...prev, status: r.status, spendFree: Number(r.spend_free ?? 0), spendPaid: Number(r.spend_paid ?? 0), targetsDone: r.targets_done ?? 0, contactsFound: r.contacts_found ?? 0 } : prev));
       })
       .subscribe();
     return () => {
@@ -181,6 +181,9 @@ export function RunsClient({
         setSweepMode('off');
         setComposer('');
         router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({ error: `request failed (${res.status})` }));
+        window.alert(`Run not started: ${data.error ?? res.status}`);
       }
     } finally {
       setStarting(false);
@@ -462,7 +465,9 @@ async function updateRunStatus(run: Run, status: string, setRun: (r: Run) => voi
   setRun({ ...run, status: status as Run['status'] });
   try {
     const supabase = createClient();
-    await supabase.from('runs').update({ status }).eq('id', run.id);
+    // Pause/resume writes the shared jobs table directly under RLS; Phase 2
+    // moves this behind the gateway alongside the other job actions.
+    await supabase.from('jobs').update({ status }).eq('id', run.id);
   } catch {
     /* optimistic; RLS may reject — status still reflects intent */
   }

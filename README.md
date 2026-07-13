@@ -5,8 +5,19 @@ whole territory, and it finds decision-maker contacts from public data —
 government registries, license boards, and company sites first, paid providers
 only when you say so. Extraction and scoring run on Claude. By **ManageAI**.
 
-This repository is the full product: the marketing site, the authenticated
-dashboard, the pipeline worker, and the database.
+> **COMPANION MODE (Phase 1).** This repo is now a companion dashboard to the
+> ManageAI **server**, which owns the database schema, migrations, and the
+> pipeline. The dashboard reads the shared Supabase project (memberships,
+> people, jobs, run_events, org_provider_configs, usage_ledger, run_profiles)
+> under RLS. Database migrations live **server-side** — the local
+> `supabase/migrations` were retired (see `supabase/migrations/README.md`).
+> Action routes (start run, connect source, talk) return **501** until the
+> server gateway is booted and wired in (Phase 2). `apps/worker` and the
+> BullMQ/Redis queue are deprecated. The architecture description below
+> predates companion mode and is kept for historical context.
+
+This repository was originally the full product: the marketing site, the
+authenticated dashboard, the pipeline worker, and the database.
 
 ```
 ┌────────────────────────┐        ┌──────────────────────────┐

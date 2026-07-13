@@ -13,9 +13,7 @@
     "dev:web": "npm run dev --workspace apps/web",
     "dev:worker": "npm run dev --workspace apps/worker",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
-    "db:reset": "supabase db reset",
-    "db:push": "supabase db push"
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "engines": {
     "node": ">=20.0.0"

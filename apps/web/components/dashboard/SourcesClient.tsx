@@ -58,11 +58,15 @@ export function SourcesClient({ sourceKeys, paidEnabled, hasOrg }: SourcesClient
     if (!hasOrg || busy) return;
     setBusy(true);
     try {
-      await fetch('/api/sources', {
+      const res = await fetch('/api/sources', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: `request failed (${res.status})` }));
+        window.alert(`Source not saved: ${data.error ?? res.status}`);
+      }
       router.refresh();
     } finally {
       setBusy(false);

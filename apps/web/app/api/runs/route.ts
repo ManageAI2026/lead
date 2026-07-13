@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient, createServiceClient } from '@/lib/supabase/server';
-import { enqueue } from '@/lib/queue';
+import { createClient } from '@/lib/supabase/server';
 import { RUN_PROFILES, type RunInput, type RunProfileId } from '@lead/core';
 
 export const runtime = 'nodejs';
@@ -8,11 +7,12 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/runs — start a run.
- * Body: { profile, input, icpProfileId?, label? }
- * 1. validates the user's session + org membership
- * 2. inserts a `runs` row (status 'queued') via the service client
- * 3. enqueues a RunJob for the worker
- * Returns { runId }.
+ *
+ * STUBBED PENDING GATEWAY (Phase 2). The dashboard is a companion to the
+ * server: job creation and dispatch belong to the server gateway, which owns
+ * writes to the shared `jobs` table. The old BullMQ enqueue path is gone.
+ * Until the gateway is booted and reachable, this validates the request and
+ * fails honestly with 501 rather than writing rows nothing will process.
  */
 export async function POST(req: Request) {
   const supabase = createClient();
@@ -22,13 +22,12 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const { data: member } = await supabase
-    .from('members')
+    .from('memberships')
     .select('org_id')
     .eq('user_id', user.id)
     .limit(1)
     .maybeSingle();
   if (!member) return NextResponse.json({ error: 'no org' }, { status: 403 });
-  const orgId = member.org_id as string;
 
   let body: {
     profile?: string;
@@ -46,60 +45,9 @@ export async function POST(req: Request) {
   if (!RUN_PROFILES[profile]) {
     return NextResponse.json({ error: 'invalid profile' }, { status: 400 });
   }
-  const input: RunInput = body.input ?? { kind: 'prompt', text: '' };
-  const label = body.label?.trim() || deriveLabel(input);
 
-  const svc = createServiceClient();
-  const { data: run, error } = await svc
-    .from('runs')
-    .insert({
-      org_id: orgId,
-      created_by: user.id,
-      label,
-      profile,
-      status: 'queued',
-      input,
-      icp_profile_id: body.icpProfileId ?? null,
-    })
-    .select('id')
-    .single();
-
-  if (error || !run) {
-    return NextResponse.json({ error: error?.message ?? 'insert failed' }, { status: 500 });
-  }
-
-  try {
-    await enqueue({
-      type: 'run',
-      runId: run.id,
-      orgId,
-      profile,
-      input,
-      icpProfileId: body.icpProfileId ?? null,
-    });
-  } catch (e) {
-    // Row is created; surface enqueue failure but keep the run for retry.
-    return NextResponse.json(
-      { runId: run.id, warning: 'queued row created but dispatch failed', detail: String(e) },
-      { status: 202 }
-    );
-  }
-
-  return NextResponse.json({ runId: run.id });
-}
-
-function deriveLabel(input: RunInput): string {
-  switch (input.kind) {
-    case 'company':
-      return `Company · ${input.domain}`;
-    case 'person':
-      return `Person · ${input.name}`;
-    case 'csv':
-      return 'CSV import';
-    case 'sweep':
-      return `Sweep · ${input.sweep.vertical}`;
-    case 'prompt':
-    default:
-      return input.kind === 'prompt' && input.text ? input.text.slice(0, 60) : 'New run';
-  }
+  return NextResponse.json(
+    { error: 'action pending gateway connection' },
+    { status: 501 }
+  );
 }

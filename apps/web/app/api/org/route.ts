@@ -19,7 +19,7 @@ async function update(req: Request) {
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const { data: member } = await supabase
-    .from('members')
+    .from('memberships')
     .select('org_id')
     .eq('user_id', user.id)
     .limit(1)
