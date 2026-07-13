@@ -71,34 +71,22 @@ export default function HomePage() {
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300 }}>
-              <div
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 data-throb=""
+                src="/manage-ai-logo.png"
+                alt="Manage AI — Lead Booster Intelligence System"
+                width={460}
+                height={259}
                 style={{
                   width: '100%',
-                  maxWidth: 340,
-                  aspectRatio: '1 / 1',
-                  borderRadius: 28,
-                  background: 'radial-gradient(circle at 50% 38%, #EBF3FC, #fff 68%)',
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 14,
-                  animation: 'lbpm-throb 2.6s ease-in-out infinite',
+                  maxWidth: 460,
+                  height: 'auto',
+                  borderRadius: 20,
+                  filter: 'drop-shadow(0 20px 50px rgba(74,143,214,.28))',
+                  animation: 'lbpm-throb 3.4s ease-in-out infinite',
                 }}
-              >
-                <span style={{ width: 74, height: 74, borderRadius: 20, background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon path='<path d="M3 3v18h18"/><path d="M7 14l3-3 3 3 4-5"/>' size={38} stroke="#fff" strokeWidth={2} />
-                </span>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontWeight: 800, fontSize: 22, letterSpacing: '-.02em' }}>
-                    <span style={{ color: 'var(--navy)' }}>MANAGE </span>
-                    <span style={{ color: 'var(--accent)' }}>AI</span>
-                  </div>
-                  <div style={{ font: '600 12px var(--f)', color: 'var(--text3)', marginTop: 4 }}>Lead Booster Intelligence System</div>
-                </div>
-              </div>
+              />
             </div>
           </div>
 
